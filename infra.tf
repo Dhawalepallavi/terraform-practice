@@ -1,0 +1,296 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+# Configure the AWS Provider
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# create aws ec2 instance_1
+resource "aws_instance" "coit_instance_1" {
+  ami           = "ami-066016d0d26e8ae60"
+  instance_type = "t2.micro"
+  key_name = aws_key_pair.demo_key_pair_1.id
+  subnet_id = aws_subnet.terraform_subnet_1a.id
+  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
+  user_data = filebase64("userdata.sh")
+
+  tags = {
+    Name = "coit_instance_1"
+    owner= "Pallavi Shete"
+  }
+}
+
+# create aws ec2 instance_2
+resource "aws_instance" "coit_instance_2" {
+  ami           = "ami-066016d0d26e8ae60"
+  instance_type = "t2.micro"
+  key_name = aws_key_pair.demo_key_pair_1.id
+  subnet_id = aws_subnet.terraform_subnet_1b.id
+  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
+
+  tags = {
+    Name = "coit_instance_2"
+    owner= "Pallavi Shete"
+  }
+}
+
+
+# create aws key pair
+resource "aws_key_pair" "demo_key_pair_1" {
+  key_name   = "demo_key_pair_1"
+  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCiG1IQDstFUaBX8uqtUiClwAj4eguyVgHtEp5V+qlz3SNlPitCz4UMDtaTKHf3Bqk9yAGNWUhXXTJSryNHO55EDVZh/cCGpidZeR1hQR8kCYWNYYNGR46I1LHGpj7rZKb203XZ6CkiBTRxXBXZ1vzbwCn+KatoGC2t6KCqgLXRXQnLT1CplodxCiCIVOUDdv2hHrFPgUO6H0k9LqhRoVSSDkiR37FRW6NwpO4s8Uf2trWfzQXMzuuIlsCsJUnWWVN/T+X9K1DJ/7dlcAzs44Xja6ZM1fvjMqxrhINBFv4MS8Fm43dLzOc5AGBIY1ezjLqShaAK0nwnJuCu2OxZcaMjzrCc6r+bLhcjaVMkZH150Grge1v9lcvmYh9COxpXSHPYOJcISaTkFnfQoeaGwz0bren1e4OETcaEtU6IilPUZYUUPbvSbboZrVpZORGIdt61mKsjvbzsuM1IQ2AD03KP2o/ouGyplUWG6GXmnSaDMyvjAEPiemY4G011fTh+/B8= hp@DESKTOP-BCJC7SG"
+  }
+
+# create aws eip
+# resource "aws_eip" "test_eip" {
+#   instance = aws_instance.coit_instance_1.id
+# }
+
+# create aws vpc
+resource "aws_vpc" "terraform_vpc" {
+  cidr_block       = "10.10.0.0/16"
+  instance_tenancy = "default"
+
+  tags = {
+    Name = "terraform_vpc"
+  }
+}
+
+# create aws subnets
+resource "aws_subnet" "terraform_subnet_1a" {
+  vpc_id     = aws_vpc.terraform_vpc.id
+  cidr_block = "10.10.0.0/24"
+  availability_zone = "ap-south-1a"
+  map_public_ip_on_launch = "true"
+
+  tags = {
+    Name = "terraform_subnet_1a"
+  }
+}
+
+resource "aws_subnet" "terraform_subnet_1b" {
+  vpc_id     = aws_vpc.terraform_vpc.id
+  cidr_block = "10.10.1.0/24"
+  availability_zone = "ap-south-1b"
+  map_public_ip_on_launch = "true"
+
+  tags = {
+    Name = "terraform_subnet_1b"
+  }
+}
+
+resource "aws_subnet" "terraform_subnet_1c" {
+  vpc_id     = aws_vpc.terraform_vpc.id
+  cidr_block = "10.10.2.0/24"
+  availability_zone = "ap-south-1c"
+
+  tags = {
+    Name = "terraform_subnet_1c"
+  }
+}
+
+# create security group
+resource "aws_security_group" "allow_ssh" {
+  name        = "allow_ssh"
+  description = "allow ssh inbound traffic and all outbound traffic"
+  vpc_id      = aws_vpc.terraform_vpc.id
+
+  tags = {
+    Name = "allow_traffic_for_coit_instance"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
+  security_group_id = aws_security_group.allow_ssh.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 22
+  ip_protocol       = "tcp"
+  to_port           = 22
+}
+resource "aws_vpc_security_group_ingress_rule" "allow_http_ipv4" {
+  security_group_id = aws_security_group.allow_ssh.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  ip_protocol       = "tcp"
+  to_port           = 80
+}
+
+resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
+  security_group_id = aws_security_group.allow_ssh.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1" # semantically equivalent to all ports
+}
+
+# create internet gateway
+resource "aws_internet_gateway" "demo_IGW" {
+  vpc_id = aws_vpc.terraform_vpc.id
+
+  tags = {
+    Name = "demo_IGW"
+  }
+}
+
+# create public route table
+resource "aws_route_table" "public_RT" {
+  vpc_id = aws_vpc.terraform_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.demo_IGW.id
+  }
+  tags = {
+    Name = "public_RT"
+  }
+}
+
+# provite public Route table association
+resource "aws_route_table_association" "RT_association_1" {
+  subnet_id      = aws_subnet.terraform_subnet_1a.id
+  route_table_id = aws_route_table.public_RT.id
+}
+
+resource "aws_route_table_association" "RT_association_2" {
+  subnet_id      = aws_subnet.terraform_subnet_1b.id
+  route_table_id = aws_route_table.public_RT.id
+}
+
+# create private route table
+resource "aws_route_table" "private_RT" {
+  vpc_id = aws_vpc.terraform_vpc.id
+
+  tags = {
+    Name = "private_RT"
+  }
+}
+
+# provite private Route table association
+resource "aws_route_table_association" "RT_association_3" {
+  subnet_id      = aws_subnet.terraform_subnet_1c.id
+  route_table_id = aws_route_table.private_RT.id
+}
+
+# create target group
+resource "aws_lb_target_group" "demo_TG" {
+  name     = "targetgroup1"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.terraform_vpc.id
+}
+
+# attchement of instances to target
+resource "aws_lb_target_group_attachment" "apache_target_group_attach_1" {
+  target_group_arn = aws_lb_target_group.demo_TG.arn
+  target_id        = aws_instance.coit_instance_1.id
+  port             = 80
+}
+
+
+resource "aws_lb_target_group_attachment" "apache_target_group_attach_2" {
+  target_group_arn = aws_lb_target_group.demo_TG.arn
+  target_id        = aws_instance.coit_instance_2.id
+  port             = 80
+}
+
+# create lisener
+resource "aws_lb_listener" "lb_lisener" {
+  load_balancer_arn = aws_lb.apache_LB.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.demo_TG.arn
+  }
+}
+
+# create application load balancer
+resource "aws_lb" "apache_LB" {
+  name               = "apache-LB"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.allow_ssh.id]
+  subnets            = [aws_subnet.terraform_subnet_1a.id, aws_subnet.terraform_subnet_1b.id]
+
+  tags = {
+    Environment = "production"
+  }
+}
+
+
+# create lauched template
+resource "aws_launch_template" "demo_LT" {
+  name = "demo-launched-template"
+  image_id = "ami-066016d0d26e8ae60"
+  instance_type = "t2.micro"
+  key_name = aws_key_pair.demo_key_pair_1.id
+  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "demo_instance_by_LT" 
+      # this name will come to our new instance
+    }
+  }
+  user_data = filebase64("userdata.sh")
+}
+ # placement {
+  #   availability_zone = "ap-south-1"
+  # }
+
+# create ASG 
+resource "aws_autoscaling_group" "demo_ASG" {
+  # name = "demo-ASG"
+  # availability_zones = ["ap-south-1a, ap-south-1b"] if in case we have 2 AZ's in the script
+  vpc_zone_identifier = [ aws_subnet.terraform_subnet_1a.id, aws_subnet.terraform_subnet_1b.id ]
+  desired_capacity   = 2
+  max_size           = 5
+  min_size           = 2
+  target_group_arns = [ aws_lb_target_group.demo_TG_2.arn ]
+  
+  launch_template {
+    id      = aws_launch_template.demo_LT.id
+    version = "$Latest"
+  }
+}
+
+# create ALB with ASG
+resource "aws_lb" "apache_LB_2" {
+  name               = "apache-LB-2"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.allow_ssh.id]
+  subnets            = [aws_subnet.terraform_subnet_1a.id, aws_subnet.terraform_subnet_1b.id]
+
+  tags = {
+    Environment = "production"
+  }
+}
+
+# create lisener with ASG
+resource "aws_lb_listener" "lb_lisener_2" {
+  load_balancer_arn = aws_lb.apache_LB_2.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.demo_TG_2.arn
+  }
+}
+
+# create target group
+resource "aws_lb_target_group" "demo_TG_2" {
+  name     = "tg-apache2"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.terraform_vpc.id
+}
