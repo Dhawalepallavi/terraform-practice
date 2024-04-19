@@ -1,3 +1,8 @@
+# variable "region" {
+#   type = string
+#   default = "ap-south-1"  
+# }
+
 terraform {
   required_providers {
     aws = {
@@ -5,11 +10,21 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+# for stage management to store terraform.tfstate create one s3 bucket on aws
+  backend "s3" {
+    bucket = "terraform-stage-123"
+    key    = "terraform_state_file"
+    region = "ap-south-1"
+  }
 }
+
+
+
 
 # Configure the AWS Provider
 provider "aws" {
-  region = "ap-south-1"
+  region = var.region
 }
 
 # create aws ec2 instance_1

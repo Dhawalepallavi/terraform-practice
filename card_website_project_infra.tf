@@ -256,3 +256,63 @@
 #   }
 #   user_data = filebase64("userdata.sh")
 # }
+
+ # placement {
+  #   availability_zone = "ap-south-1"
+  # }
+
+# create ASG 
+# resource "aws_autoscaling_group" "demo_ASG" {
+#   # name = "demo-ASG"
+#   # availability_zones = ["ap-south-1a, ap-south-1b"] if in case we have 2 AZ's in the script
+#   vpc_zone_identifier = [ aws_subnet.terraform_subnet_1a.id, aws_subnet.terraform_subnet_1b.id ]
+#   desired_capacity   = 2
+#   max_size           = 5
+#   min_size           = 2
+#   target_group_arns = [ aws_lb_target_group.demo_TG_2.arn ]
+  
+#   launch_template {
+#     id      = aws_launch_template.demo_LT.id
+#     version = "$Latest"
+#   }
+# }
+
+# # create ALB with ASG
+# resource "aws_lb" "apache_LB_2" {
+#   name               = "apache-LB-2"
+#   internal           = false
+#   load_balancer_type = "application"
+#   security_groups    = [aws_security_group.allow_ssh.id]
+#   subnets            = [aws_subnet.terraform_subnet_1a.id, aws_subnet.terraform_subnet_1b.id]
+
+#   tags = {
+#     Environment = "production"
+#   }
+# }
+
+# # create lisener with ASG
+# resource "aws_lb_listener" "lb_lisener_2" {
+#   load_balancer_arn = aws_lb.apache_LB_2.arn
+#   port              = "80"
+#   protocol          = "HTTP"
+
+#   default_action {
+#     type             = "forward"
+#     target_group_arn = aws_lb_target_group.demo_TG_2.arn
+#   }
+# }
+
+# # create target group
+# resource "aws_lb_target_group" "demo_TG_2" {
+#   name     = "tg-apache2"
+#   port     = 80
+#   protocol = "HTTP"
+#   vpc_id   = aws_vpc.terraform_vpc.id
+# }
+
+#   backend "s3" {
+#     bucket = "terraform-stage-123"
+#     key    = "terraform_state_file"
+#     region = "ap-south-1"
+#   }
+# }
