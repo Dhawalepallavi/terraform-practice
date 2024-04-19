@@ -309,3 +309,4 @@ resource "aws_lb_target_group" "demo_TG_2" {
   protocol = "HTTP"
   vpc_id   = aws_vpc.terraform_vpc.id
 }
+
